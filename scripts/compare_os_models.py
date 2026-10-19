@@ -18,7 +18,7 @@ meta={'sub_id':r['sub_id'],'title':r['sub_title'],'course':r['course_title'],'mo
 def run(name,key,url,model):
  start=time.monotonic();result={'provider':name,'model':model}
  try:
-  client=OpenAI(api_key=os.environ[key],base_url=url,max_retries=0)
+  client=OpenAI(api_key=os.environ[key],base_url=url,max_retries=2)
   # Preserve production prompt/parameters. Record raw token usage separately.
   class Capture:
    def __init__(self,inner):self.inner=inner;self.chat=self;self.completions=self;self.usage=None;self.finish=None
@@ -34,5 +34,6 @@ def run(name,key,url,model):
  result['seconds']=round(time.monotonic()-start,2)
  print(json.dumps(result,ensure_ascii=False),flush=True);return result
 specs=[('pro-controlled','DASHSCOPE_API_KEY','https://api-inference.modelscope.cn/v1/','deepseek-ai/DeepSeek-V4-Pro-0813'),('deepseek-flash','DEEPSEEK_API_KEY','https://api.deepseek.com/v1','deepseek-flash'),('gemini-flash','GEMINI_API_KEY','https://generativelanguage.googleapis.com/v1beta/openai/','gemini-3.8-flash')]
-with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:meta['results']=list(pool.map(lambda x:run(*x),specs))
+specs=specs[-1:]  # Retry only Gemini; preserve previous Pro/Flash outputs locally.
+with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:meta['results']=list(pool.map(lambda x:run(*x),specs))
 (out/'metadata.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2))
